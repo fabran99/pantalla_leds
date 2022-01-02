@@ -61,13 +61,13 @@ void showColorList(int colors[LED_COUNT][3], bool randomizeDark){
     if(randomizeDark && n > 7){
       shadeColor(currentColor, -15);
     }
-    Serial.print(i);
-    Serial.print(currentColor[0]);
-    Serial.print(",");
-    Serial.print(currentColor[1]);
-    Serial.print(",");
-    Serial.print(currentColor[2]);
-    Serial.println();
+//    Serial.print(i);
+//    Serial.print(currentColor[0]);
+//    Serial.print(",");
+//    Serial.print(currentColor[1]);
+//    Serial.print(",");
+//    Serial.print(currentColor[2]);
+//    Serial.println();
 //    delay(10);
     strip.setPixelColor(i, strip.Color(currentColor[0],currentColor[1],currentColor[2]));  
   }
@@ -187,7 +187,8 @@ void drawNumber(int number, int rowStart, int colStart, int colorList[LED_COUNT]
 //          Serial.print(",");
 //          Serial.print(currentColor[1]);
 //          Serial.print(",");
-//          Serial.println(12);
+//          Serial.print(currentColor[2]);
+////          Serial.println(12);
 //          Serial.println();
           if(randomizeDark && random(0,10)>7){
             shadeColor(currentColor, -40);  

@@ -123,3 +123,19 @@ const int DIGIT_POSITIONS[5][2] = {
 //   }
 
 // }
+
+const int defaultColors[12][3]=
+{
+    {255, 60, 46},      //rojo
+    {255, 123, 46},  //naranja
+    {133, 255, 46},   //verde
+    {46, 255, 157},    //verde agua
+    {46, 234, 255}, //celeste
+    {46, 109, 255},    //Azul
+    {102, 46, 255},  //lila
+    {168, 46, 255},  //violeta
+    {255, 46, 182},    //rosa
+    {255, 46, 88},   //salmon
+    {0,0,0},   //negro
+    {255,255,255}   //blanco
+};
