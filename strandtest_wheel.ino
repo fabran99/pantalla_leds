@@ -5,6 +5,8 @@
 
 //Custom imports
 #include "constants.hpp"
+#include "data_definitions.hpp"
+#include "variables.hpp"
 #define PIN 6
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(LED_COUNT, PIN, NEO_GRB + NEO_KHZ800);
 
@@ -13,21 +15,6 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(LED_COUNT, PIN, NEO_GRB + NEO_KHZ800
 #include <DS1307RTC.h>
 
 #include "utils.hpp"
-
-bool horizontal = false;
-const int colorCount = ROWS;
-bool repeat = true;
-bool addBlack = false;
-int dir = 0;
-int colorList[colorCount][3];
-int color1[3] = {0, 179, 255};
-int color2[3] = {110, 43, 255};
-int gradient[LED_COUNT][3];
-//int colorGrid[LED_COUNT][3];
-
-bool clockTick = true;
-int cicleCounter = 0;
-int delayTime = 200;
 
 void setup(void)
 {
@@ -45,29 +32,79 @@ void setup(void)
   strip.begin();
   strip.setBrightness(LED_BRIGHTNESS);
   strip.show(); // Initialize all pixels to 'off'
-
-  Serial.println("Inicio");
-  //  getSingleColorEffect(colorGrid, color1);
-  generateGradient(colorList, color1, color2, colorCount, repeat, addBlack);
-  getGradientEffect(gradient, colorList, horizontal);
+//  Serial.println("inicio");
+//  Serial.println(currentColorCount);
+  generateGradient(currentGradient.colorList,
+                   currentGradient.color1,
+                   currentGradient.color2,
+                   currentColorCount,
+                   currentGradient.repeat,
+                   currentGradient.addBlack);
+  getGradientEffect(currentGradient.colorMatrix, currentGradient.colorList, currentConfig.isHorizontalGradient);
 }
 
 void loop()
 {
+//  Serial.println("hola");
+//    for(int i = 0; i<ROWS; i++){
+//      Serial.println(i);
+//    Serial.print(currentGradient.colorList[i].r);
+//    Serial.print(",");
+//    Serial.print(currentGradient.colorList[i].g);
+//    Serial.print(",");
+//    Serial.print(currentGradient.colorList[i].b);  
+//    Serial.println();
+//  }
+//  showColorList(currentGradient.colorMatrix, false);
+ int i = 1;
+ Serial.print(currentGradient.colorList[i].r);
+    Serial.print(",");
+    Serial.print(currentGradient.colorList[i].g);
+    Serial.print(",");
+    Serial.print(currentGradient.colorList[i].b);  
+    Serial.println();
+//    clearAllPixels();
+  drawCurrentTime(currentGradient.colorMatrix, currentClockConfig.showTick, false);
+//  moveColorList(currentGradient.colorList, ROWS, currentConfig.gradientDirection);
+//        for(int i = 0; i<ROWS; i++){
+//      Serial.println(i);
+ 
+    Serial.print(currentGradient.colorList[i].r);
+    Serial.print(",");
+    Serial.print(currentGradient.colorList[i].g);
+    Serial.print(",");
+    Serial.print(currentGradient.colorList[i].b);  
+    Serial.println();
+//  }
+  delay(100000);
+//  getGradientEffect(currentGradient.colorMatrix, currentGradient.colorList, currentConfig.isHorizontalGradient);
+//      for(int i = 0; i<ROWS; i++){
+//      Serial.println(i);
+//    Serial.print(currentGradient.colorList[i].r);
+//    Serial.print(",");
+//    Serial.print(currentGradient.colorList[i].g);
+//    Serial.print(",");
+//    Serial.print(currentGradient.colorList[i].b);  
+//    Serial.println();
+//  }
+//  getGradientEffect(currentGradient.colorMatrix, currentGradient.colorList, currentConfig.isHorizontalGradient);
+//  delay(currentClockConfig.delayTime);
+//  delay(100000);
 
   //  showColorList(gradient, true);
   //  delay(50);
   //  moveColorList(colorList, colorCount, dir);
   //  getGradientEffect(gradient, colorList, horizontal);
-  drawCurrentTime(gradient, clockTick, false);
+//  drawCurrentTime(currentGradient.colorList, currentClockConfig.showTick, false);
+//  delay(100000);
   //  drawCurrentTime(colorGrid, clockTick, true);
-  cicleCounter += 1;
-  if (cicleCounter * delayTime == 1000)
-  {
-    cicleCounter = 0;
-    clockTick = !clockTick;
-  }
-  delay(delayTime);
-  moveColorList(colorList, colorCount, dir);
-  getGradientEffect(gradient, colorList, horizontal);
+//  currentClockConfig.cicleCounter += 1;
+//  if (currentClockConfig.cicleCounter * currentClockConfig.delayTime == 1000)
+//  {
+//    currentClockConfig.cicleCounter = 0;
+//    currentClockConfig.showTick = !currentClockConfig.showTick;
+//  }
+//  delay(currentClockConfig.delayTime);
+//  moveColorList(currentGradient.colorList, ROWS, currentConfig.gradientDirection);
+//  getGradientEffect(currentGradient.colorMatrix, currentGradient.colorList, currentConfig.isHorizontalGradient);
 }
