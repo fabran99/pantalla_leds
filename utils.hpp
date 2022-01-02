@@ -41,18 +41,18 @@ void generateGradient(int ar[][3], int color1[3], int color2[3], int colorCount,
 //============================================
 // Draw to strip
 //============================================
-void showMatrix(int matrix[ROWS][COLUMNS][3]){
-//  Recorro la matriz y voy asignando cada color a la tira, finalmente hago show
-  for(int row = 0; row < ROWS; row++){
-    for(int col = 0; col < COLUMNS; col++){
-      int currentPixel = row * COLUMNS + col;
-      int currentColor[3] = {matrix[row][col][0],matrix[row][col][1],matrix[row][col][2]};
-      strip.setPixelColor(currentPixel,
-      strip.Color(currentColor[0],currentColor[1],currentColor[2]));  
-    }  
-  }
-  strip.show();
-};
+//void showMatrix(int matrix[ROWS][COLUMNS][3]){
+////  Recorro la matriz y voy asignando cada color a la tira, finalmente hago show
+//  for(int row = 0; row < ROWS; row++){
+//    for(int col = 0; col < COLUMNS; col++){
+//      int currentPixel = row * COLUMNS + col;
+//      int currentColor[3] = {matrix[row][col][0],matrix[row][col][1],matrix[row][col][2]};
+//      strip.setPixelColor(currentPixel,
+//      strip.Color(currentColor[0],currentColor[1],currentColor[2]));  
+//    }  
+//  }
+//  strip.show();
+//};
 
 void showColorList(int colors[LED_COUNT][3], bool randomizeDark){
   for(int i=0; i< LED_COUNT; i++){
@@ -61,13 +61,13 @@ void showColorList(int colors[LED_COUNT][3], bool randomizeDark){
     if(randomizeDark && n > 7){
       shadeColor(currentColor, -15);
     }
-//    Serial.print(i);
-//    Serial.print(currentColor[0]);
-//    Serial.print(",");
-//    Serial.print(currentColor[1]);
-//    Serial.print(",");
-//    Serial.print(currentColor[2]);
-//    Serial.println();
+    Serial.print(i);
+    Serial.print(currentColor[0]);
+    Serial.print(",");
+    Serial.print(currentColor[1]);
+    Serial.print(",");
+    Serial.print(currentColor[2]);
+    Serial.println();
 //    delay(10);
     strip.setPixelColor(i, strip.Color(currentColor[0],currentColor[1],currentColor[2]));  
   }
@@ -180,6 +180,15 @@ void drawNumber(int number, int rowStart, int colStart, int colorList[LED_COUNT]
         if(row[j]==1){
           int pixel = coordsToPixel(rowStart+i, colStart+j);
           int currentColor[3] = {colorList[pixel][0],colorList[pixel][1],colorList[pixel][2]};
+          
+//          Serial.print(pixel);
+//          Serial.print(": ");
+//          Serial.print(currentColor[0]);
+//          Serial.print(",");
+//          Serial.print(currentColor[1]);
+//          Serial.print(",");
+//          Serial.println(12);
+//          Serial.println();
           if(randomizeDark && random(0,10)>7){
             shadeColor(currentColor, -40);  
           }

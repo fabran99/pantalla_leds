@@ -1,7 +1,7 @@
 const int ROWS = 6;
 const int COLUMNS = 18;
 const int LED_COUNT = ROWS * COLUMNS;
-const int LED_BRIGHTNESS = 25;
+const int LED_BRIGHTNESS = 12;
 
 const int NUMBER_HEIGHT = 6;
 const int NUMBER_WIDTH = 3;
