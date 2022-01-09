@@ -10,6 +10,7 @@ uint8_t coordsToPixel(uint8_t row, uint8_t col)
 void generateGradient(uint8_t color1[3], uint8_t color2[3])
 {
   uint8_t repeatLimit = (colorCount / 2);
+  
   // uint8_t diff = (color2 - color1) / colorCount;
   float alpha = 0.0;
   for (int i = 0; i < colorCount; i++)
@@ -196,7 +197,7 @@ void handleReceivedChars(char receivedChars[MAX_CHARS])
     if(newMode == currentMode){
       break;  
     }
-    if (newMode >= 0 && newMode <= 3)
+    if (newMode >= 0 && newMode <= 4)
     {
       currentMode = newMode;
       // Si entro a modo manual limpio la pantalla
@@ -226,6 +227,13 @@ void handleReceivedChars(char receivedChars[MAX_CHARS])
   {
     uint8_t newRandomizeDark = String(receivedChars[1]).toInt();
     randomizeDark = newRandomizeDark ? true : false;
+    break;
+  }
+  // Cambio direccion del movimiento en degradado
+  case 'd':
+  {
+    uint8_t newDir = String(receivedChars[1]).toInt();
+    dir = newDir ? true : false;
     break;
   }
   // Cambio horizontal
@@ -267,6 +275,25 @@ void handleReceivedChars(char receivedChars[MAX_CHARS])
       generateGradient(color1, color2);
       getGradientEffect();
     }
+    break;
+  }
+  // Aplicar hora nueva
+  case 'T':
+  {
+    tmElements_t tm;
+    char y[5] = {receivedChars[1],receivedChars[2],receivedChars[3],receivedChars[4],'\0'};
+    tm.Year = String(y).toInt();
+    char m[3] = {receivedChars[5],receivedChars[6],'\0'};
+    tm.Month = String(m).toInt();
+    char d[3] = {receivedChars[7],receivedChars[8],'\0'};
+    tm.Day = String(d).toInt();
+    char h[3] = {receivedChars[9],receivedChars[10],'\0'};
+    tm.Hour = String(h).toInt();
+    char mn[3] = {receivedChars[11],receivedChars[12],'\0'};
+    tm.Minute = String(mn).toInt();
+    char s[3] = {receivedChars[13],receivedChars[14],'\0'};
+    tm.Second = String(s).toInt();
+    RTC.write(tm);
     break;
   }
   // color 1

@@ -4,10 +4,11 @@
 //#define COLOR_ORDER GRB
 //#define CHIPSET WS2812B
 CRGBArray<NUM_LEDS> leds;
-SoftwareSerial BT(10,11);
+SoftwareSerial BT(11,10);
 
 //Custom imports
 #include "constants.hpp"
+#include "extra_animations.hpp"
 #define PIN 6
 
 #include <Wire.h>
@@ -82,6 +83,10 @@ void loop()
     // Muestro la pantalla manual
     showColorGrid();
     delay(delayTime);
+  }
+  else if(currentMode == 4){
+    runOptimizedDrawing();
+    delay(delayTime);  
   }
 
   

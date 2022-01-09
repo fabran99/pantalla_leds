@@ -26,6 +26,7 @@ uint8_t currentMode = 0;
 // 1 = colores/degradados
 // 2 = concentricHueShift
 // 3 = Dibujo manual
+// 4 = animacion por js
 
 
 //================================
