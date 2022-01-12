@@ -3,6 +3,23 @@ uint8_t coordsToPixel(uint8_t row, uint8_t col)
   return row * COLUMNS + col;
 };
 
+
+
+uint16_t XYsafe( int x, int y) {
+  if ( x >= COLUMNS) return NUM_LEDS;
+  if ( y >= ROWS) return NUM_LEDS;
+
+  if ( x < 0 ) return NUM_LEDS;
+  if ( y < 0 ) return NUM_LEDS;
+
+  return coordsToPixel(y, x);
+}
+
+void pixelToCoords(uint8_t pixel, uint8_t row, uint8_t col){
+  row = pixel/COLUMNS;
+  col = pixel%COLUMNS;  
+}
+
 //======================================
 // COLORS
 //======================================
@@ -166,8 +183,8 @@ void drawNumber(uint8_t number, uint8_t rowStart, uint8_t colStart)
 
 void drawCurrentTime()
 {
-  FastLED.clear();
   tmElements_t tm;
+    FastLED.clear();
   if (RTC.read(tm))
   {
     drawNumber(tm.Hour / 10, 0, 0);
@@ -194,10 +211,10 @@ void handleReceivedChars(char receivedChars[MAX_CHARS])
   case 'M':
   {
     uint8_t newMode = String(receivedChars[1]).toInt();
-    if(newMode == currentMode){
+    if(newMode == currentMode && currentMode != 5 && currentMode != 3){
       break;  
     }
-    if (newMode >= 0 && newMode <= 4)
+    if (newMode >= 0 && newMode <= 9)
     {
       currentMode = newMode;
       // Si entro a modo manual limpio la pantalla
@@ -207,6 +224,21 @@ void handleReceivedChars(char receivedChars[MAX_CHARS])
         getSingleColorEffect(black);
         randomizeDark = false;
       }
+      // Tomo los hue en estos modos
+      else if(currentMode == 2){
+        // En este paso los hue minimos y maximos   
+        char minh[4] = {receivedChars[2],receivedChars[3],receivedChars[4],'\0'};
+        char maxh[4] = {receivedChars[5],receivedChars[6],receivedChars[7],'\0'};
+        minHue = atoi(minh);
+        maxHue = atoi(maxh);  
+//        FastLED.clear();
+      }
+      else if(currentMode == 5 || currentMode == 6 || currentMode == 7 || currentMode == 8 || currentMode ==9){
+        // En este limpio la tira
+        counter=0;
+        FastLED.clear();
+      }
+     
       else
       {
         if (gradientMode)
@@ -230,10 +262,16 @@ void handleReceivedChars(char receivedChars[MAX_CHARS])
     break;
   }
   // Cambio direccion del movimiento en degradado
-  case 'd':
+//  case 'd':
+//  {
+//    dir = String(receivedChars[1]).toInt();
+//    break;
+//  }
+//  Cambio el hue para las animaciones
+  case 'h':
   {
-    uint8_t newDir = String(receivedChars[1]).toInt();
-    dir = newDir ? true : false;
+    char nhue[4] = {receivedChars[1],receivedChars[2],receivedChars[3],'\0'};
+    hue= atoi(nhue);
     break;
   }
   // Cambio horizontal
@@ -296,63 +334,21 @@ void handleReceivedChars(char receivedChars[MAX_CHARS])
     RTC.write(tm);
     break;
   }
+  // Cambiar brillo
+  case 'L':
+  {
+    char brightness[5] = {receivedChars[1],receivedChars[2],receivedChars[3],'\0'};
+    LED_BRIGHTNESS = String(brightness).toInt();
+    FastLED.setBrightness(LED_BRIGHTNESS);
+    break;
+  }
   // color 1
   case 'A':
   {
     Serial.println("Color 1");
-    char r[4];
-    char g[4];
-    char b[4];
-    uint8_t prevIndex = 1;
-    uint8_t nIdx = 0;
-    // Tomo los valores de r
-    for (int i = prevIndex; i < prevIndex + 3; i++)
-    {
-      Serial.println(receivedChars[i]);
-      if (receivedChars[i] == ',')
-      {
-        prevIndex = i + 1;
-        break;
-      }
-      r[nIdx] = receivedChars[i];
-      nIdx++;
-      if (nIdx == 3)
-      {
-        prevIndex = i + 2;
-      }
-    }
-    r[nIdx] = '\0';
-    // Tomo los valores de g
-    nIdx = 0;
-    for (int i = prevIndex; i < prevIndex + 3; i++)
-    {
-      Serial.println(receivedChars[i]);
-      if (receivedChars[i] == ',')
-      {
-        prevIndex = i + 1;
-        break;
-      }
-      g[nIdx] = receivedChars[i];
-      nIdx++;
-      if (nIdx == 3)
-      {
-        prevIndex = i + 2;
-      }
-    }
-    g[nIdx] = '\0';
-    // Tomo los valores de b
-    nIdx = 0;
-    for (int i = prevIndex; i < prevIndex + 3; i++)
-    {
-      if (receivedChars[i] == ',')
-      {
-        prevIndex = i + 1;
-        break;
-      }
-      b[nIdx] = receivedChars[i];
-      nIdx++;
-    }
-    b[nIdx] = '\0';
+    char r[4] = {receivedChars[1],receivedChars[2],receivedChars[3],'\0'};
+    char g[4] = {receivedChars[4],receivedChars[5],receivedChars[6],'\0'};
+    char b[4]= {receivedChars[7],receivedChars[8],receivedChars[9],'\0'};
     color1[0] = atoi(r);
     color1[1] = atoi(g);
     color1[2] = atoi(b);
@@ -372,57 +368,9 @@ void handleReceivedChars(char receivedChars[MAX_CHARS])
   case 'B':
   {
     Serial.println("Color 2");
-    char r[4];
-    char g[4];
-    char b[4];
-    uint8_t prevIndex = 1;
-    uint8_t nIdx = 0;
-    // Tomo los valores de r
-    for (int i = prevIndex; i < prevIndex + 3; i++)
-    {
-      if (receivedChars[i] == ',')
-      {
-        prevIndex = i + 1;
-        break;
-      }
-      r[nIdx] = receivedChars[i];
-      nIdx++;
-      if (nIdx == 3)
-      {
-        prevIndex = i + 2;
-      }
-    }
-    r[nIdx] = '\0';
-    // Tomo los valores de g
-    nIdx = 0;
-    for (int i = prevIndex; i < prevIndex + 3; i++)
-    {
-      if (receivedChars[i] == ',')
-      {
-        prevIndex = i + 1;
-        break;
-      }
-      g[nIdx] = receivedChars[i];
-      nIdx++;
-      if (nIdx == 3)
-      {
-        prevIndex = i + 2;
-      }
-    }
-    g[nIdx] = '\0';
-    // Tomo los valores de b
-    nIdx = 0;
-    for (int i = prevIndex; i < prevIndex + 3; i++)
-    {
-      if (receivedChars[i] == ',')
-      {
-        prevIndex = i + 1;
-        break;
-      }
-      b[nIdx] = receivedChars[i];
-      nIdx++;
-    }
-    b[nIdx] = '\0';
+    char r[4] = {receivedChars[1],receivedChars[2],receivedChars[3],'\0'};
+    char g[4] = {receivedChars[4],receivedChars[5],receivedChars[6],'\0'};
+    char b[4]= {receivedChars[7],receivedChars[8],receivedChars[9],'\0'};
     color2[0] = atoi(r);
     color2[1] = atoi(g);
     color2[2] = atoi(b);
@@ -444,76 +392,11 @@ void handleReceivedChars(char receivedChars[MAX_CHARS])
       break;  
     }
     Serial.println("Pixel");
-    char pixel[4];
-    char r[4];
-    char g[4];
-    char b[4];
-    uint8_t prevIndex = 1;
-    uint8_t nIdx = 0;
-    // Tomo el pixel
-    for (int i = prevIndex; i < prevIndex + 3; i++)
-    {
-      if (receivedChars[i] == ',')
-      {
-        prevIndex = i + 1;
-        break;
-      }
-      pixel[nIdx] = receivedChars[i];
-      nIdx++;
-      if (nIdx == 3)
-      {
-        prevIndex = i + 2;
-      }
-    }
-    pixel[nIdx] = '\0';
-    nIdx=0;
-    
-    // Tomo los valores de r
-    for (int i = prevIndex; i < prevIndex + 3; i++)
-    {
-      if (receivedChars[i] == ',')
-      {
-        prevIndex = i + 1;
-        break;
-      }
-      r[nIdx] = receivedChars[i];
-      nIdx++;
-      if (nIdx == 3)
-      {
-        prevIndex = i + 2;
-      }
-    }
-    r[nIdx] = '\0';
-    // Tomo los valores de g
-    nIdx = 0;
-    for (int i = prevIndex; i < prevIndex + 3; i++)
-    {
-      if (receivedChars[i] == ',')
-      {
-        prevIndex = i + 1;
-        break;
-      }
-      g[nIdx] = receivedChars[i];
-      nIdx++;
-      if (nIdx == 3)
-      {
-        prevIndex = i + 2;
-      }
-    }
-    g[nIdx] = '\0';
-    // Tomo los valores de b
-    nIdx = 0;
-    for (int i = prevIndex; i < prevIndex + 3; i++)
-    {
-      if (receivedChars[i] == ',')
-      {
-        prevIndex = i + 1;
-        break;
-      }
-      b[nIdx] = receivedChars[i];
-      nIdx++;
-    }
-    b[nIdx] = '\0';
+    char pixel[4] = {receivedChars[1],receivedChars[2],receivedChars[3],'\0'};
+    char r[4] = {receivedChars[4],receivedChars[5],receivedChars[6],'\0'};
+    char g[4]= {receivedChars[7],receivedChars[8],receivedChars[9],'\0'};
+    char b[4]= {receivedChars[10],receivedChars[11],receivedChars[12],'\0'};
+  
     colorGrid[atoi(pixel)][0] = atoi(r);
     colorGrid[atoi(pixel)][1] = atoi(g);
     colorGrid[atoi(pixel)][2] = atoi(b);
@@ -567,34 +450,5 @@ void readFromSerial()
   {
     newData = false;
     handleReceivedChars(receivedChars);
-  }
-}
-
-//==================================
-// Efectos extra
-//==================================
-void concentricHueShift()
-{
-  hue = minHue;
-  hueChangeSpeed = max(1, (maxHue - minHue) / (NUM_LEDS / 2));
-  for (int i = 0; i < NUM_LEDS / 2; i++)
-  {
-    // fade everything out
-    leds.fadeToBlackBy(40);
-
-    // let's set an led value
-    if (hueRotation)
-    {
-      hue += hueChangeSpeed;
-    }
-    if (hue > maxHue || hue < minHue)
-    {
-      hueChangeSpeed *= -1;
-    }
-    leds[i] = CHSV(hue, 255, 255);
-    // now, let's first 20 leds to the top 20 leds,
-    leds(NUM_LEDS / 2, NUM_LEDS - 1) = leds(NUM_LEDS / 2 - 1, 0);
-    FastLED.show();
-    FastLED.delay(33);
   }
 }

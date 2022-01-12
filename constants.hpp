@@ -1,7 +1,7 @@
 const uint8_t ROWS = 6;
 const uint8_t COLUMNS = 18;
 const uint8_t LED_COUNT = ROWS * COLUMNS;
-const uint8_t LED_BRIGHTNESS =25;
+uint8_t LED_BRIGHTNESS =20; // Ya no va a ser constante
 
 const uint8_t NUMBER_HEIGHT = 6;
 const uint8_t NUMBER_WIDTH = 3;

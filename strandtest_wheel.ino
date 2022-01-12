@@ -8,6 +8,7 @@ SoftwareSerial BT(11,10);
 
 //Custom imports
 #include "constants.hpp"
+#include "config.hpp"
 #include "extra_animations.hpp"
 #define PIN 6
 
@@ -15,8 +16,9 @@ SoftwareSerial BT(11,10);
 #include <TimeLib.h>
 #include <DS1307RTC.h>
 
-#include "config.hpp"
+
 #include "utils.hpp"
+#include "animations.hpp"
 
 
 void setup(void)
@@ -29,7 +31,7 @@ void setup(void)
   }
   FastLED.addLeds<WS2812B, 6,GRB>(leds, NUM_LEDS);
   FastLED.setBrightness(LED_BRIGHTNESS);
-  FastLED.setMaxPowerInVoltsAndMilliamps(5, 1500);
+  FastLED.setMaxPowerInVoltsAndMilliamps(5, 2000);
   FastLED.clear();
   FastLED.show();
 
@@ -88,6 +90,25 @@ void loop()
     runOptimizedDrawing();
     delay(delayTime);  
   }
-
+  else if(currentMode == 5){
+    randomDots();
+    delay(50);  
+  }
+  else if(currentMode == 6){
+    matrixEffect();
+    delay(50);  
+  }
+  else if(currentMode == 7){
+    rbow();
+    delay(20);  
+  }
+  else if(currentMode == 8){
+    parttrail();
+    delay(40);  
+  }
+  else if(currentMode == 9){
+    pacifica_loop();
+    delay(40);  
+  }
   
 }
