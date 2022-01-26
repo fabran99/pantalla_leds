@@ -1,306 +1,596 @@
-int coordsToPixel(int row, int col)
+uint8_t coordsToPixel(uint8_t row, uint8_t col)
 {
   return row * COLUMNS + col;
 };
+
+uint16_t XYsafe(int x, int y)
+{
+  if (x >= COLUMNS)
+    return NUM_LEDS;
+  if (y >= ROWS)
+    return NUM_LEDS;
+
+  if (x < 0)
+    return NUM_LEDS;
+  if (y < 0)
+    return NUM_LEDS;
+
+  return coordsToPixel(y, x);
+}
+
+void pixelToCoords(uint8_t pixel, uint8_t row, uint8_t col)
+{
+  row = pixel / COLUMNS;
+  col = pixel % COLUMNS;
+}
 
 //======================================
 // COLORS
 //======================================
 
-rgbColor shadeColor(rgbColor color, int amt)
+void generateGradient(uint8_t color1[3], uint8_t color2[3])
 {
-  rgbColor newColor = {max(min(255, color.r + amt), 0), max(min(255, color.g + amt), 0), max(min(255, color.b + amt), 0)};
-  return newColor;
-};
+  uint8_t repeatLimit = (colorCount / 2);
 
-void generateGradient(rgbColor ar[], rgbColor color1, rgbColor color2, int colorCount, bool repeat = false, bool addBlack = false)
-{
+  // uint8_t diff = (color2 - color1) / colorCount;
   float alpha = 0.0;
-  int repeatLimit = (colorCount / 2);
   for (int i = 0; i < colorCount; i++)
   {
     if (addBlack && i == colorCount - 1)
     {
-      rgbColor black = {0,0,0};
-      ar[i] = black;
+      // ar[i] = {0, 0, 0};
+      colorList[i][0] = 0;
+      colorList[i][1] = 0;
+      colorList[i][2] = 0;
       break;
     }
-    if (repeat && i > repeatLimit)
+    if (reverseGradient && i > repeatLimit)
     {
-      int prevIndex = repeatLimit - (i - repeatLimit);
-      rgbColor currentColor = {ar[prevIndex].r,ar[prevIndex].g,ar[prevIndex].b};
-      // ar[i][0] = ar[prevIndex][0];
-      // ar[i][1] = ar[prevIndex][1];
-      // ar[i][2] = ar[prevIndex][2];
-      ar[i] = currentColor;
+      uint8_t prevIndex = repeatLimit - (i - repeatLimit);
+      // colorList[i] = {colorList[prevIndex][0], colorList[prevIndex][1], colorList[prevIndex][2]};
+      for (uint8_t j = 0; j < 3; j++)
+      {
+        colorList[i][j] = colorList[prevIndex][j];
+      }
     }
     else
     {
-//      Serial.print("=====================");
       alpha += (1.0 / colorCount);
-      // ar[i][0] = color1[0] * alpha + (1-alpha)* color2[0];
-      // ar[i][1] = color1[1] * alpha + (1-alpha)* color2[1];
-      // ar[i][2] = color1[2] * alpha + (1-alpha)* color2[2];
-      rgbColor newColor = {color1.r * alpha + (1 - alpha) * color2.r, color1.g * alpha + (1 - alpha) * color2.g, color1.b * alpha + (1 - alpha) * color2.b};
-      ar[i] = newColor;
-//      Serial.print(newColor.r);
-//      Serial.print(",");
-//      Serial.print(newColor.g);
-//      Serial.print(",");
-//      Serial.print(newColor.b);
-//      Serial.println("=====================");
+      for (int j = 0; j < 3; j++)
+      {
+        colorList[i][j] = (color1[j] * alpha + (1 - alpha) * color2[j]);
+      }
     }
   }
-  
+};
+
+void localGenerateGradient(uint8_t clist[][3], uint8_t cCount, uint8_t c1[3], uint8_t c2[3])
+{
+  float alpha = 0.0;
+  for (int i = 0; i < cCount; i++)
+  {
+    alpha += (1.0 / cCount);
+    for (int j = 0; j < 3; j++)
+    {
+      clist[i][j] = (c1[j] * alpha + (1 - alpha) * c2[j]);
+    }
+  }
 };
 
 //============================================
 // Draw to strip
 //============================================
-// void showMatrix(int matrix[ROWS][COLUMNS][3]){
-// //  Recorro la matriz y voy asignando cada color a la tira, finalmente hago show
-//   for(int row = 0; row < ROWS; row++){
-//     for(int col = 0; col < COLUMNS; col++){
-//       int currentPixel = row * COLUMNS + col;
-//       int currentColor[3] = {matrix[row][col][0],matrix[row][col][1],matrix[row][col][2]};
-//       strip.setPixelColor(currentPixel,
-//       strip.Color(currentColor[0],currentColor[1],currentColor[2]));
-//     }
-//   }
-//   strip.show();
-// };
 
-void showColorList(rgbColor colors[LED_COUNT], bool randomizeDark)
+void showColorGrid()
 {
-  for (int i = 0; i < LED_COUNT; i++)
+  for (uint8_t i = 0; i < LED_COUNT; i++)
   {
-    rgbColor currentColor = {colors[i].r, colors[i].g,colors[i].b};
-    float n = random(0, 10);
-    if (randomizeDark && n > 7)
+    leds[i] = CRGB(colorGrid[i][0], colorGrid[i][1], colorGrid[i][2]);
+    if (randomizeDark && random(0, 10) > RANDOM_SHADE)
     {
-      currentColor = shadeColor(currentColor, -15);
+      //      shadeColor(currentColor, -SHADE_AMT);
+      leds[i].fadeToBlackBy(SHADE_AMT);
     }
-    //    Serial.print(i);
-    //    Serial.print(currentColor[0]);
-    //    Serial.print(",");
-    //    Serial.print(currentColor[1]);
-    //    Serial.print(",");
-    //    Serial.print(currentColor[2]);
-    //    Serial.println();
-    //    delay(10);
-    strip.setPixelColor(i, strip.Color(currentColor.r, currentColor.g, currentColor.b));
   }
-  strip.show();
+  FastLED.show();
 };
 
 //======================================
 // UTILS
 //======================================
 
-void moveColorList(rgbColor ar[], int arlen, int dir)
+void moveColorList()
 {
   //  1 = derecha, el resto es izquierda
-  int lastIndex = arlen - 1;
+  uint8_t lastIndex = colorCount - 1;
   if (dir == 1)
   {
-    rgbColor edge = {ar[lastIndex].r, ar[lastIndex].g,ar[lastIndex].b};
-    for (int i = lastIndex; i >= 0; i--)
+    uint8_t edge[3] = {colorList[lastIndex][0], colorList[lastIndex][1], colorList[lastIndex][2]};
+    for (uint8_t i = lastIndex; i >= 0; i--)
     {
-      // for(int j = 0; j<3; j++){
-      //   ar[i][j]=ar[i-1][j]  ;
-      // }
-      rgbColor tmpColor = {ar[i - 1].r, ar[i - 1].g, ar[i - 1].b};
-      ar[i] = tmpColor;
+      for (int j = 0; j < 3; j++)
+      {
+        colorList[i][j] = colorList[i - 1][j];
+      }
     }
-    // for(int i = 0; i<3; i++){
-    //     ar[0][i]=edge[i] ;
-    //  }
-    ar[0] = {edge.r, edge.g, edge.b};
+    for (int j = 0; j < 3; j++)
+    {
+      colorList[0][j] = edge[j];
+    }
   }
   else
   {
-    // int edge[3] =  {ar[0][0],ar[0][1], ar[0][2] };
-    rgbColor edge = {ar[0].r, ar[0].g,ar[0].b};
-    for (int i = 0; i < lastIndex; i++)
+    // uint8_t edge = colorList[0];
+    uint8_t edge[3] = {colorList[0][0], colorList[0][1], colorList[0][2]};
+    for (uint8_t i = 0; i < lastIndex; i++)
     {
-      // for(int j = 0; j<3; j++){
-      //   ar[i][j]=ar[i+1][j]  ;
-      // }
-      rgbColor tmpColor = {ar[i + 1].r, ar[i + 1].g, ar[i + 1].b};
-      ar[i] = tmpColor;
+      // colorList[i] = colorList[i + 1];
+      for (uint8_t j = 0; j < 3; j++)
+      {
+        colorList[i][j] = colorList[i + 1][j];
+      }
     }
-    // for(int i = 0; i<3; i++){
-    //     ar[lastIndex][i]=edge[i] ;
-    //  }
-    ar[lastIndex] = {edge.r, edge.g,edge.b};
+    // colorList[lastIndex] = edge;
+    for (uint8_t j = 0; j < 3; j++)
+    {
+      colorList[lastIndex][j] = edge[j];
+    }
   }
 };
-
-void getNumberPosition(int currentNumberPosition[NUMBER_HEIGHT][NUMBER_WIDTH], int number)
-{
-  for (int i = 0; i < NUMBER_HEIGHT; i++)
-  {
-    for (int j = 0; j < NUMBER_WIDTH; j++)
-    {
-      currentNumberPosition[i][j] = NUMBER_POSITIONS[number][i][j];
-    }
-  }
-}
-
-void getNumberRow(int row[NUMBER_WIDTH], int currentNumberPosition[NUMBER_HEIGHT][NUMBER_WIDTH], int rowN)
-{
-  for (int i = 0; i < NUMBER_WIDTH; i++)
-  {
-    row[i] = currentNumberPosition[rowN][i];
-  }
-}
 
 //==================================
 // Matrix generation
 //==================================
 
-void getGradientEffect(rgbColor ar[], rgbColor colorList[], bool horizontal)
+void getGradientEffect()
 {
-  for (int row = 0; row < ROWS; row++)
+  for (uint8_t row = 0; row < ROWS; row++)
   {
-    for (int col = 0; col < COLUMNS; col++)
+    for (uint8_t col = 0; col < COLUMNS; col++)
     {
-      int currentPixel = coordsToPixel(row, col);
-      rgbColor currentColor = {
-        colorList[horizontal ? col : row].r, 
-        colorList[horizontal ? col : row].g,
-        colorList[horizontal ? col : row].b};
-      // ar[currentPixel][0] = currentColor[0];
-      // ar[currentPixel][1] = currentColor[1];
-      // ar[currentPixel][2] = currentColor[2];
-      ar[currentPixel] = currentColor;
+      uint8_t currentPixel = coordsToPixel(row, col);
+      uint8_t colorListIndex = horizontal ? col : row;
+      for (int i = 0; i < 3; i++)
+      {
+        colorGrid[currentPixel][i] = colorList[colorListIndex][i];
+      }
     }
   }
 };
 
-void clearAllPixels(){
-    
-    for(int i=0; i<LED_COUNT; i++){
-      strip.setPixelColor(i, strip.Color(0,0,0));  
+void getSingleColorEffect(uint8_t color[3])
+{
+  for (uint8_t row = 0; row < ROWS; row++)
+  {
+    for (uint8_t col = 0; col < COLUMNS; col++)
+    {
+      uint8_t currentPixel = coordsToPixel(row, col);
+
+      for (int i = 0; i < 3; i++)
+      {
+        colorGrid[currentPixel][i] = color[i];
+      }
     }
-    strip.show();
+  }
 }
 
-void getSingleColorEffect(rgbColor ar[LED_COUNT], rgbColor color)
+void updatePalette()
 {
-  for (int row = 0; row < ROWS; row++)
+  if (gradientMode)
   {
-    for (int col = 0; col < COLUMNS; col++)
-    {
-      int currentPixel = coordsToPixel(row, col);
-      // ar[currentPixel][0] = color[0];
-      // ar[currentPixel][1] = color[1];
-      // ar[currentPixel][2] = color[2];
-      ar[currentPixel] = {color.r, color.g, color.b};
-    }
+    //      uint8_t clist[16][3];
+    //      localGenerateGradient(clist, 16, color1, color2);
+    //      for(int i = 0; i<16; i++){
+    //        currentPalette[i]=CRGB(clist[i][0],clist[i][1],clist[i][2]);
+    //      }
+    //      Serial.println(CRGB(color1[0], color1[1],color1[2]));
+    fill_solid(currentPalette, 16, CRGB::Black);
+    currentPalette[0] = CRGB(color1[0], color1[1], color1[2]);
+    currentPalette[1] = CRGB(color2[0], color2[1], color2[2]);
+    currentPalette[4] = CRGB(color1[0], color1[1], color1[2]);
+    currentPalette[5] = CRGB(color2[0], color2[1], color2[2]);
+    currentPalette[8] = CRGB(color1[0], color1[1], color1[2]);
+    currentPalette[9] = CRGB(color2[0], color2[1], color2[2]);
+    currentPalette[12] = CRGB(color1[0], color1[1], color1[2]);
+    currentPalette[13] = CRGB(color2[0], color2[1], color2[2]);
+  }
+  else
+  {
+    // 'black out' all 16 palette entries...
+    fill_solid(currentPalette, 16, CRGB::Black);
+    // and set every fourth one to color1.
+    currentPalette[0] = CRGB(color1[0], color1[1], color1[2]);
+    currentPalette[4] = CRGB(color1[0], color1[1], color1[2]);
+    currentPalette[8] = CRGB(color1[0], color1[1], color1[2]);
+    currentPalette[12] = CRGB(color1[0], color1[1], color1[2]);
   }
 }
 
 //==============================================
 // TIME
 //==============================================
-timeDigits getTimeDigits()
-{
-  tmElements_t tm;
-  timeDigits digits = {0, 0, 0, 0};
-   if (RTC.read(tm))
-   {
-     int digits1 = tm.Hour / 10;
-     int digits2 = tm.Hour % 10;
-     int digits3 = tm.Minute / 10;
-     int digits4 = tm.Minute % 10;
-     digits = {
-         digits1,
-         digits2,
-         digits3,
-         digits4};
-   }
-  return digits;
-}
 
-void drawNumber(int number, int rowStart, int colStart, rgbColor colorList[LED_COUNT], bool showStrip = false, bool randomizeDark = false)
+void drawNumber(uint8_t number, uint8_t rowStart, uint8_t colStart)
 {
-  int currentNumberPosition[NUMBER_HEIGHT][NUMBER_WIDTH];
-  getNumberPosition(currentNumberPosition, number);
-  for (int i = 0; i < NUMBER_HEIGHT; i++)
+  uint8_t startPixel = coordsToPixel(rowStart, colStart);
+  uint8_t totalElements = pgm_read_byte_near(&(NUMBER_QUANTITY[number]));
+  for (uint8_t i = 0; i < totalElements; i++)
   {
-    int row[3];
-    getNumberRow(row, currentNumberPosition, i);
+    uint8_t currentPosition = pgm_read_byte_near(&(NUMBER_POSITIONS[number][i]));
+    //    Serial.println(currentPosition);
+    uint8_t pixel = startPixel + currentPosition;
+    //    uint8_t currentColor[3] = {colorList[pixel][0], colorList[pixel][1], colorList[pixel][2]};
 
-    for (int j = 0; j < NUMBER_WIDTH; j++)
+    leds[pixel] = CRGB(colorGrid[pixel][0], colorGrid[pixel][1], colorGrid[pixel][2]);
+    if (randomizeDark && random(0, 10) > RANDOM_SHADE)
     {
-      int pixel = coordsToPixel(rowStart + i, colStart + j);
-//      Serial.println(pixel);
-      if (row[j] == 1)
-      {
-//        int tmpList[3] = {colorList[pixel].r, colorList[pixel].g, colorList[pixel].b};
-//        rgbColor currentColor = {tmpList[3][0], colorList[pixel].g, colorList[pixel].b};
-//        if (randomizeDark && random(0, 10) > 7)
-//        {
-//          currentColor = shadeColor(currentColor, -40);
-//        }
-//        Serial.print(pixel);
-//        Serial.print(": ");
-//        Serial.print(currentColor.r);
-//        Serial.print(",");
-//        Serial.print(currentColor.g);
-//        Serial.print(",");
-//        Serial.print(currentColor.b);
-//        Serial.println();
-        strip.setPixelColor(pixel,
-                            strip.Color(255,255,255));
-//        Serial.println("if");
-      }
-      else{
-//        Serial.println("else");
-//        strip.setPixelColor(pixel, strip.Color(255,255,255));  
-strip.setPixelColor(pixel, strip.Color(255,255,255));  
-      }
+      //        shadeColor(currentColor, -SHADE_AMT);
+      leds[pixel].fadeToBlackBy(SHADE_AMT);
     }
   }
-  if (showStrip)
+}
+
+void drawCurrentTime()
+{
+  tmElements_t tm;
+  FastLED.clear();
+  //
+  if (RTC.read(tm))
   {
-    strip.show();
+    h1 = tm.Hour / 10;
+    h2 = tm.Hour % 10;
+    m1 = tm.Minute / 10;
+    m2 = tm.Minute % 10;
+    s = tm.Second;
+  }
+  else
+  {
+    //  Serial.println("no pude leer");
+  }
+  drawNumber(h1, 0, 0);
+  drawNumber(h2, 0, 4);
+  drawNumber(m1, 0, 10);
+  drawNumber(m2, 0, 14);
+  if (s % 2 == 0)
+  {
+    drawNumber(10, 0, 7);
+  }
+
+  FastLED.show();
+}
+
+//==================================
+// Leer de serial
+//==================================
+int StrToHex(char str[])
+{
+  return (int)strtol(str, 0, 16);
+}
+
+void handleReceivedChars(char receivedChars[MAX_CHARS])
+{
+  switch (receivedChars[0])
+  {
+  // Cambio de modo
+  case 'M':
+  {
+    uint8_t newMode = String(receivedChars[1]).toInt();
+    // chequeo si no es el modo 10
+    if (newMode == 1 && receivedChars[2] != '>')
+    {
+      char nm[3] = {receivedChars[1], receivedChars[2], '\0'};
+      newMode = String(nm).toInt();
+    }
+    if (newMode == currentMode && (currentMode != 5 && currentMode != 3))
+    {
+      break;
+    }
+    if (newMode >= 0 && newMode <= 10)
+    {
+      currentMode = newMode;
+      // Si entro a modo manual limpio la pantalla
+      if (currentMode == 3)
+      {
+        uint8_t black[3] = {0, 0, 0};
+        getSingleColorEffect(black);
+      }
+      // Tomo los hue en estos modos
+      else if (currentMode == 2)
+      {
+        // En este paso los hue minimos y maximos
+        char minh[4] = {receivedChars[2], receivedChars[3], receivedChars[4], '\0'};
+        char maxh[4] = {receivedChars[5], receivedChars[6], receivedChars[7], '\0'};
+        minHue = atoi(minh);
+        maxHue = atoi(maxh);
+        //        FastLED.clear();
+      }
+      else if (currentMode == 5 || currentMode == 6 || currentMode == 7 || currentMode == 8 || currentMode == 9)
+      {
+        // En este limpio la tira
+        counter = 0;
+        FastLED.clear();
+      }
+
+      else
+      {
+        if (gradientMode)
+        {
+          generateGradient(color1, color2);
+          getGradientEffect();
+        }
+        else
+        {
+          getSingleColorEffect(color1);
+        }
+      }
+    }
+    break;
+  }
+  // Cambio aleatoriedad de shading
+  case 'D':
+  {
+    uint8_t newRandomizeDark = String(receivedChars[1]).toInt();
+    randomizeDark = newRandomizeDark ? true : false;
+    break;
+  }
+    // Cambio direccion del movimiento en degradado
+    //  case 'd':
+    //  {
+    //    dir = String(receivedChars[1]).toInt();
+    //    break;
+    //  }
+    //  Cambio el hue para las animaciones
+  case 'h':
+  {
+    char nhue[4] = {receivedChars[1], receivedChars[2], receivedChars[3], '\0'};
+    hue = atoi(nhue);
+    break;
+  }
+  // Cambio horizontal
+  case 'H':
+  {
+    uint8_t isHorizontal = String(receivedChars[1]).toInt();
+    horizontal = isHorizontal ? true : false;
+    colorCount = horizontal ? COLUMNS : ROWS;
+    bool showingThis = (currentMode == 0 || currentMode == 1);
+    if (gradientMode && showingThis)
+    {
+      generateGradient(color1, color2);
+      getGradientEffect();
+    }
+    break;
+  }
+  // Modo degradado
+  case 'G':
+  {
+    uint8_t isGradient = String(receivedChars[1]).toInt();
+    gradientMode = isGradient ? true : false;
+    bool showingThis = (currentMode == 0 || currentMode == 1 || currentMode == 10);
+    updatePalette();
+    if (gradientMode && showingThis)
+    {
+      generateGradient(color1, color2);
+      getGradientEffect();
+    }
+    else if (showingThis)
+    {
+      getSingleColorEffect(color1);
+    }
+    break;
+  }
+  // agregar franja negra
+  case 'b':
+  {
+    uint8_t shouldAddBlack = String(receivedChars[1]).toInt();
+    addBlack = shouldAddBlack ? true : false;
+    bool showingThis = (currentMode == 0 || currentMode == 1);
+    if (gradientMode && showingThis)
+    {
+      generateGradient(color1, color2);
+      getGradientEffect();
+    }
+    break;
+  }
+  // Invertir degradado
+  case 'R':
+  {
+    uint8_t isReversed = String(receivedChars[1]).toInt();
+    reverseGradient = isReversed ? true : false;
+
+    bool showingThis = (currentMode == 0 || currentMode == 1);
+    if (gradientMode && showingThis)
+    {
+      generateGradient(color1, color2);
+      getGradientEffect();
+    }
+    break;
+  }
+  // Aplicar hora nueva
+  case 'T':
+  {
+    tmElements_t tm;
+    char y[5] = {receivedChars[1], receivedChars[2], receivedChars[3], receivedChars[4], '\0'};
+    tm.Year = String(y).toInt();
+    char m[3] = {receivedChars[5], receivedChars[6], '\0'};
+    tm.Month = String(m).toInt();
+    char d[3] = {receivedChars[7], receivedChars[8], '\0'};
+    tm.Day = String(d).toInt();
+    char h[3] = {receivedChars[9], receivedChars[10], '\0'};
+    tm.Hour = String(h).toInt();
+    char mn[3] = {receivedChars[11], receivedChars[12], '\0'};
+    tm.Minute = String(mn).toInt();
+    char s[3] = {receivedChars[13], receivedChars[14], '\0'};
+    tm.Second = String(s).toInt();
+    RTC.write(tm);
+    break;
+  }
+  // Cambiar brillo
+  case 'L':
+  {
+    char brightness[5] = {receivedChars[1], receivedChars[2], receivedChars[3], '\0'};
+    LED_BRIGHTNESS = String(brightness).toInt();
+    FastLED.setBrightness(LED_BRIGHTNESS);
+    break;
+  }
+  // color 1
+  case 'A':
+  {
+    Serial.println("Color 1");
+    char r[4] = {receivedChars[1], receivedChars[2], receivedChars[3], '\0'};
+    char g[4] = {receivedChars[4], receivedChars[5], receivedChars[6], '\0'};
+    char b[4] = {receivedChars[7], receivedChars[8], receivedChars[9], '\0'};
+    color1[0] = atoi(r);
+    color1[1] = atoi(g);
+    color1[2] = atoi(b);
+    updatePalette();
+
+    bool showingThis = (currentMode == 0 || currentMode == 1 || currentMode == 10);
+
+    if (gradientMode && showingThis)
+    {
+      generateGradient(color1, color2);
+      getGradientEffect();
+    }
+    else if (showingThis)
+    {
+      getSingleColorEffect(color1);
+    }
+    break;
+  }
+  // color 2
+  case 'B':
+  {
+    Serial.println("Color 2");
+    char r[4] = {receivedChars[1], receivedChars[2], receivedChars[3], '\0'};
+    char g[4] = {receivedChars[4], receivedChars[5], receivedChars[6], '\0'};
+    char b[4] = {receivedChars[7], receivedChars[8], receivedChars[9], '\0'};
+    color2[0] = atoi(r);
+    color2[1] = atoi(g);
+    color2[2] = atoi(b);
+
+    bool showingThis = (currentMode == 0 || currentMode == 1 || currentMode == 10);
+
+    if (gradientMode && showingThis)
+    {
+      if (currentMode == 10)
+      {
+        updatePalette();
+      }
+      else
+      {
+        generateGradient(color1, color2);
+        getGradientEffect();
+      }
+    }
+    else if (showingThis)
+    {
+      getSingleColorEffect(color1);
+    }
+    break;
+  }
+  case 'P':
+  {
+    if (currentMode != 3)
+    {
+      break;
+    }
+    Serial.println("Pixel");
+    char pixel[4] = {receivedChars[1], receivedChars[2], receivedChars[3], '\0'};
+    char r[4] = {receivedChars[4], receivedChars[5], receivedChars[6], '\0'};
+    char g[4] = {receivedChars[7], receivedChars[8], receivedChars[9], '\0'};
+    char b[4] = {receivedChars[10], receivedChars[11], receivedChars[12], '\0'};
+
+    colorGrid[atoi(pixel)][0] = atoi(r);
+    colorGrid[atoi(pixel)][1] = atoi(g);
+    colorGrid[atoi(pixel)][2] = atoi(b);
+    break;
+  }
+  // Muestro tira
+  case 'S':
+  {
+    FastLED.show();
+    break;
+  }
+  // Limpio tira
+  case 'c':
+  {
+    FastLED.clear();
+    break;
+  }
+  // aplico color a una lista de pixeles en hexadecimal
+  case 'C':
+  {
+    //    Serial.println(receivedChars);
+    char r[3] = {receivedChars[1], receivedChars[2], '\0'};
+    char g[3] = {receivedChars[3], receivedChars[4], '\0'};
+    char b[3] = {receivedChars[5], receivedChars[6], '\0'};
+    CRGB currentColor = CRGB(StrToHex(r), StrToHex(g), StrToHex(b));
+
+    int posCounter = 7;
+    char pos[3] = {'0', '0', '\0'};
+    while (posCounter < MAX_CHARS)
+    {
+      pos[0] = receivedChars[posCounter];
+      pos[1] = receivedChars[posCounter + 1];
+      if (pos[0] == '|' || pos[1] == '|')
+      {
+        break;
+      }
+      colorGrid[StrToHex(pos)][0] = currentColor.r;
+      colorGrid[StrToHex(pos)][1] = currentColor.g;
+      colorGrid[StrToHex(pos)][2] = currentColor.b;
+      posCounter += 2;
+    }
+    break;
+  }
+
+  default:
+  {
+    Serial.println("default");
+    break;
+  }
   }
 }
 
-void drawCurrentTime(rgbColor colorList[LED_COUNT], bool clockTick = true, bool randomizeDark = false)
+void readFromSerial()
 {
- 
-  timeDigits digits = getTimeDigits();
-//  Serial.println("dentro");
-//  // // dibujo la hora
-//  // for (int i = 0; i < 4; i++)
-//  // {
-    int i = 1;
-    Serial.print(currentGradient.colorList[i].r);
-    Serial.print(",");
-    Serial.print(currentGradient.colorList[i].g);
-    Serial.print(",");
-    Serial.print(currentGradient.colorList[i].b);  
-    Serial.println();
-    strip.clear();
-//  drawNumber(digits.hourFirst, DIGIT_POSITIONS[0][0], DIGIT_POSITIONS[0][1], colorList, false, false);
-//  Serial.println(strip.getPixelColor(107));
-//  drawNumber(digits.hourSecond, DIGIT_POSITIONS[1][0], DIGIT_POSITIONS[1][1], colorList, false, randomizeDark);
-//  drawNumber(digits.minuteFirst, DIGIT_POSITIONS[2][0], DIGIT_POSITIONS[2][1], colorList, false, randomizeDark);
-//  drawNumber(digits.minuteSecond, DIGIT_POSITIONS[3][0], DIGIT_POSITIONS[3][1], colorList, false, randomizeDark);
-////  // }
-//   if (clockTick)
-//   {
-//     drawNumber(10, DIGIT_POSITIONS[4][0], DIGIT_POSITIONS[4][1], colorList, false, randomizeDark);
-//   }
+  static byte ndx = 0;
+  char rc;
+  static boolean recvInProgress = false;
+  char startMarker = '<';
+  char endMarker = '>';
 
-  Serial.print(currentGradient.colorList[i].r);
-    Serial.print(",");
-    Serial.print(currentGradient.colorList[i].g);
-    Serial.print(",");
-    Serial.print(currentGradient.colorList[i].b);  
-    Serial.println();
-//  strip.show();
+  while (BT.available() > 0 && newData == false)
+  {
+    rc = BT.read();
+    if (recvInProgress)
+    {
+      if (rc != endMarker)
+      {
+        receivedChars[ndx] = rc;
+        ndx++;
+        if (ndx >= MAX_CHARS)
+        {
+          ndx = MAX_CHARS - 1;
+        }
+      }
+      else
+      {
+        receivedChars[ndx] = '\0'; // terminate the string
+        recvInProgress = false;
+        ndx = 0;
+        newData = true;
+      }
+    }
+    else if (rc == startMarker)
+    {
+      recvInProgress = true;
+    }
+  }
+
+  if (newData)
+  {
+    newData = false;
+    handleReceivedChars(receivedChars);
+  }
 }
