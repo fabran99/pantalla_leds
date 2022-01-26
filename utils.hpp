@@ -60,6 +60,20 @@ void generateGradient(uint8_t color1[3], uint8_t color2[3])
   }
 };
 
+void localGenerateGradient(uint8_t clist[][3], uint8_t cCount, uint8_t c1[3], uint8_t c2[3])
+{
+  float alpha = 0.0;
+  for (int i = 0; i < cCount; i++)
+  {
+      alpha += (1.0 / cCount);
+      for (int j = 0; j < 3; j++)
+      {
+        clist[i][j] = (c1[j] * alpha + (1 - alpha) * c2[j]);
+      }
+    }
+  
+};
+
 //============================================
 // Draw to strip
 //============================================
@@ -157,6 +171,35 @@ void getSingleColorEffect(uint8_t color[3])
   }
 }
 
+void updatePalette(){
+    if(gradientMode){
+//      uint8_t clist[16][3];
+//      localGenerateGradient(clist, 16, color1, color2);
+//      for(int i = 0; i<16; i++){
+//        currentPalette[i]=CRGB(clist[i][0],clist[i][1],clist[i][2]);  
+//      }
+//      Serial.println(CRGB(color1[0], color1[1],color1[2]));
+      fill_solid( currentPalette, 16, CRGB::Black);
+      currentPalette[0] = CRGB(color1[0], color1[1],color1[2]);
+      currentPalette[1] = CRGB(color2[0], color2[1],color2[2]);
+      currentPalette[4] = CRGB(color1[0], color1[1],color1[2]);
+      currentPalette[5] = CRGB(color2[0], color2[1],color2[2]);
+      currentPalette[8] = CRGB(color1[0], color1[1],color1[2]);
+      currentPalette[9] = CRGB(color2[0], color2[1],color2[2]);
+      currentPalette[12] = CRGB(color1[0], color1[1],color1[2]);
+      currentPalette[13] = CRGB(color2[0], color2[1],color2[2]);
+    }
+    else{
+      // 'black out' all 16 palette entries...
+      fill_solid( currentPalette, 16, CRGB::Black);
+      // and set every fourth one to color1.
+      currentPalette[0] = CRGB(color1[0], color1[1],color1[2]);
+      currentPalette[4] = CRGB(color1[0], color1[1],color1[2]);
+      currentPalette[8] = CRGB(color1[0], color1[1],color1[2]);
+      currentPalette[12] = CRGB(color1[0], color1[1],color1[2]);  
+    }
+}
+
 //==============================================
 // TIME
 //==============================================
@@ -185,17 +228,25 @@ void drawCurrentTime()
 {
   tmElements_t tm;
     FastLED.clear();
-  if (RTC.read(tm))
-  {
-    drawNumber(tm.Hour / 10, 0, 0);
-    drawNumber(tm.Hour % 10, 0, 4);
-    drawNumber(tm.Minute / 10, 0, 10);
-    drawNumber(tm.Minute % 10, 0, 14);
-    if (tm.Second % 2 == 0)
+//  
+  if (RTC.read(tm)){
+    h1 = tm.Hour / 10;
+    h2 = tm.Hour % 10;
+    m1 = tm.Minute / 10;
+    m2 = tm.Minute % 10;
+    s = tm.Second;
+  }
+  else{
+//  Serial.println("no pude leer");  
+  }
+    drawNumber(h1, 0, 0);
+    drawNumber(h2, 0, 4);
+    drawNumber(m1, 0, 10);
+    drawNumber(m2, 0, 14);
+    if (s % 2 == 0)
     {
       drawNumber(10, 0, 7);
     }
-  }
 
   FastLED.show();
 }
@@ -203,6 +254,10 @@ void drawCurrentTime()
 //==================================
 // Leer de serial
 //==================================
+int StrToHex(char str[]){
+  return (int) strtol(str, 0, 16);
+}
+
 void handleReceivedChars(char receivedChars[MAX_CHARS])
 {
   switch (receivedChars[0])
@@ -211,10 +266,15 @@ void handleReceivedChars(char receivedChars[MAX_CHARS])
   case 'M':
   {
     uint8_t newMode = String(receivedChars[1]).toInt();
-    if(newMode == currentMode && currentMode != 5 && currentMode != 3){
+    // chequeo si no es el modo 10
+    if(newMode == 1 && receivedChars[2] != '>'){
+      char nm[3] = {receivedChars[1], receivedChars[2], '\0'};
+      newMode = String(nm).toInt();
+    }
+    if(newMode == currentMode && (currentMode != 5 && currentMode != 3)){
       break;  
     }
-    if (newMode >= 0 && newMode <= 9)
+    if (newMode >= 0 && newMode <= 10)
     {
       currentMode = newMode;
       // Si entro a modo manual limpio la pantalla
@@ -222,7 +282,6 @@ void handleReceivedChars(char receivedChars[MAX_CHARS])
       {
         uint8_t black[3] = {0, 0, 0};
         getSingleColorEffect(black);
-        randomizeDark = false;
       }
       // Tomo los hue en estos modos
       else if(currentMode == 2){
@@ -280,7 +339,8 @@ void handleReceivedChars(char receivedChars[MAX_CHARS])
     uint8_t isHorizontal = String(receivedChars[1]).toInt();
     horizontal = isHorizontal ? true : false;
     colorCount = horizontal ? COLUMNS : ROWS;
-    if (gradientMode)
+    bool showingThis = (currentMode == 0 || currentMode == 1);
+    if (gradientMode && showingThis)
     {
       generateGradient(color1, color2);
       getGradientEffect();
@@ -292,14 +352,29 @@ void handleReceivedChars(char receivedChars[MAX_CHARS])
   {
     uint8_t isGradient = String(receivedChars[1]).toInt();
     gradientMode = isGradient ? true : false;
-    if (gradientMode)
+    bool showingThis = (currentMode == 0 || currentMode == 1 || currentMode == 10);
+    updatePalette();
+    if (gradientMode && showingThis )
+    {
+        generateGradient(color1, color2);
+        getGradientEffect();   
+    }
+    else if(showingThis)
+    {
+      getSingleColorEffect(color1);
+    }
+    break;
+  }
+  // agregar franja negra
+  case 'b':
+  {
+    uint8_t shouldAddBlack = String(receivedChars[1]).toInt();
+    addBlack = shouldAddBlack ? true : false;
+    bool showingThis = (currentMode == 0 || currentMode == 1);
+    if (gradientMode && showingThis)
     {
       generateGradient(color1, color2);
       getGradientEffect();
-    }
-    else
-    {
-      getSingleColorEffect(color1);
     }
     break;
   }
@@ -308,7 +383,9 @@ void handleReceivedChars(char receivedChars[MAX_CHARS])
   {
     uint8_t isReversed = String(receivedChars[1]).toInt();
     reverseGradient = isReversed ? true : false;
-    if (gradientMode)
+    
+    bool showingThis = (currentMode == 0 || currentMode == 1);
+    if (gradientMode && showingThis)
     {
       generateGradient(color1, color2);
       getGradientEffect();
@@ -352,13 +429,16 @@ void handleReceivedChars(char receivedChars[MAX_CHARS])
     color1[0] = atoi(r);
     color1[1] = atoi(g);
     color1[2] = atoi(b);
+    updatePalette();
+    
+    bool showingThis = (currentMode == 0 || currentMode == 1 || currentMode == 10);
 
-    if (gradientMode)
+    if (gradientMode && showingThis)
     {
-      generateGradient(color1, color2);
-      getGradientEffect();
+        generateGradient(color1, color2);
+        getGradientEffect();    
     }
-    else
+    else if(showingThis)
     {
       getSingleColorEffect(color1);
     }
@@ -375,14 +455,21 @@ void handleReceivedChars(char receivedChars[MAX_CHARS])
     color2[1] = atoi(g);
     color2[2] = atoi(b);
 
-    if (gradientMode)
+    bool showingThis = (currentMode == 0 || currentMode == 1 || currentMode == 10);
+
+    if (gradientMode && showingThis)
     {
-      generateGradient(color1, color2);
-      getGradientEffect();
+      if(currentMode == 10){
+        updatePalette();
+      }
+      else{
+        generateGradient(color1, color2);
+        getGradientEffect();    
+      }
     }
-    else
+    else if(showingThis)
     {
-      getSingleColorEffect(color2);
+      getSingleColorEffect(color1);
     }
     break;
   }
@@ -402,6 +489,43 @@ void handleReceivedChars(char receivedChars[MAX_CHARS])
     colorGrid[atoi(pixel)][2] = atoi(b);
     break;
   }
+  // Muestro tira
+  case 'S':
+  {
+    FastLED.show();
+    break;
+  }
+  // Limpio tira
+  case 'c':
+  {
+    FastLED.clear();
+    break;
+  }
+  // aplico color a una lista de pixeles en hexadecimal
+  case 'C':
+  {
+//    Serial.println(receivedChars);
+    char r[3] = {receivedChars[1],receivedChars[2],'\0'};
+    char g[3]= {receivedChars[3],receivedChars[4],'\0'};
+    char b[3]= {receivedChars[5],receivedChars[6],'\0'};
+    CRGB currentColor = CRGB(StrToHex(r), StrToHex(g),StrToHex(b));
+    
+    int posCounter = 7;
+    char pos[3] = {'0','0','\0'};
+    while(posCounter < MAX_CHARS){
+      pos[0] = receivedChars[posCounter];
+      pos[1] = receivedChars[posCounter +1];
+      if(pos[0] == '|' || pos[1] == '|'){
+        break;
+      }
+      colorGrid[StrToHex(pos)][0] = currentColor.r;
+      colorGrid[StrToHex(pos)][1] = currentColor.g;
+      colorGrid[StrToHex(pos)][2] = currentColor.b;
+      posCounter +=2;
+    }
+    break;
+  }
+  
   default:
   {
     Serial.println("default");

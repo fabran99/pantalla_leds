@@ -13,6 +13,12 @@ bool gradientMode = false;
 bool moveGradient = true;
 int delayTime = 1000/10;
 
+uint8_t h1 = 0;
+uint8_t h2 = 0;
+uint8_t m1 = 0;
+uint8_t m2 = 0;
+uint8_t s = 0; 
+
 //===========================
 // Serial
 //===========================
@@ -21,7 +27,7 @@ bool newData = false;
 //===========================
 // Modo
 //===========================
-uint8_t currentMode = 9; 
+uint8_t currentMode = 0; 
 // 0 = reloj
 // 1 = colores/degradados
 // 2 = concentricHueShift
@@ -32,6 +38,7 @@ uint8_t currentMode = 9;
 // 7 = arcoiris random
 // 8 = particulas voladoras
 // 9 = pacifica
+// 10 = paleta
 
 
 //================================
@@ -48,6 +55,7 @@ int vy = 8;
 int px = 0;
 int py = 4;
 long counter=0;
+uint8_t counter8=0;
 
 // pacifica
 CRGBPalette16 pacifica_palette_1 = 
@@ -59,3 +67,7 @@ CRGBPalette16 pacifica_palette_2 =
 CRGBPalette16 pacifica_palette_3 = 
     { 0x000208, 0x00030E, 0x000514, 0x00061A, 0x000820, 0x000927, 0x000B2D, 0x000C33, 
       0x000E39, 0x001040, 0x001450, 0x001860, 0x001C70, 0x002080, 0x1040BF, 0x2060FF };
+
+// paleta
+CRGBPalette16 currentPalette;
+TBlendType    currentBlending = LINEARBLEND;

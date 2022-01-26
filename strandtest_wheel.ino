@@ -44,8 +44,12 @@ void setup(void)
     getGradientEffect();  
   }
   else{
-    getSingleColorEffect(color1);  
+    getSingleColorEffect(color1);
   }
+
+  updatePalette();
+
+  
 }
 
 void loop()
@@ -54,7 +58,6 @@ void loop()
   // Leo el serial
   //============================
   readFromSerial();
-  
   //============================
   // Modo reloj
   //============================
@@ -100,7 +103,7 @@ void loop()
   }
   else if(currentMode == 7){
     rbow();
-    delay(20);  
+    delay(delayTime);  
   }
   else if(currentMode == 8){
     parttrail();
@@ -109,6 +112,10 @@ void loop()
   else if(currentMode == 9){
     pacifica_loop();
     delay(40);  
+  }
+  else if(currentMode == 10){
+    FillLEDsFromPaletteColors();
+    delay(80);  
   }
   
 }

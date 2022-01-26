@@ -38,7 +38,7 @@ void randomDots(){
 //  leds.fadeToBlackBy(40);
 
   // random colored speckles that blink in and fade smoothly
-  fadeToBlackBy( leds, NUM_LEDS, 10);
+  fadeToBlackBy( leds, NUM_LEDS, 40);
   int pos = random16(NUM_LEDS);
   leds[pos] += CHSV( hue + random8(8), 200, 255);
   FastLED.show();
@@ -103,7 +103,7 @@ void parttrail() {
 
   //leds[XYsafe(px + random8() % 5 - 2 - vx / 4, py + random8() % 5 - 2 - vy / 4)] = CHSV(i / 4, random8(64, 256), random8(32, 200));
   leds[XYsafe(px, py)] = CHSV(i / 4, 255, 255);
-  fadeToBlackBy( leds, NUM_LEDS, 16);
+  fadeToBlackBy( leds, NUM_LEDS, 32);
   FastLED.show();
   if (i % 3 == 0) {
     vx = vx + random8() % 3 - 1;
@@ -119,24 +119,33 @@ void parttrail() {
 }
 
 void rbow() { //20 ms is best
-  int i = counter % 4096;
-  if (i < 2048) {
-    for (byte x = 0; x < COLUMNS; x++) {
-      for (byte y = 0; y < ROWS; y++) {
-        leds[XYsafe(x, y)] = CHSV(cos8(y * i / 50) + sin8(x * 5 + i / 10) + i, 255, 255);
-      }
-    }
-  }
-  else  {
-    i = 4096 - i;
-    for (byte x = 0; x < COLUMNS; x++) {
-      for (byte y = 0; y < ROWS; y++) {
-        leds[XYsafe(x, y)] = CHSV(cos8(y * i / 50) + sin8(x * 5 + i / 10) + i, 255, 255);
-      }
+  hue+=5;
+  for(int i = 0; i< NUM_LEDS; i++){
+    leds[i] = CHSV(hue, 255,255 )  ;
+    if (randomizeDark && random(0, 10) > RANDOM_SHADE)
+    {
+      leds[i].fadeToBlackBy(SHADE_AMT);
     }
   }
   FastLED.show();
-  counter++;
+//  int i = counter % 4096;
+//  if (i < 2048) {
+//    for (byte x = 0; x < COLUMNS; x++) {
+//      for (byte y = 0; y < ROWS; y++) {
+//        leds[XYsafe(x, y)] = CHSV(cos8(y * i / 50) + sin8(x * 5 + i / 10) + i, 255, 255);
+//      }
+//    }
+//  }
+//  else  {
+//    i = 4096 - i;
+//    for (byte x = 0; x < COLUMNS; x++) {
+//      for (byte y = 0; y < ROWS; y++) {
+//        leds[XYsafe(x, y)] = CHSV(cos8(y * i / 50) + sin8(x * 5 + i / 10) + i, 255, 255);
+//      }
+//    }
+//  }
+//  FastLED.show();
+//  counter++;
 }
 
 //==========================
@@ -224,4 +233,12 @@ void pacifica_loop()
   // Deepen the blues and greens a bit
   pacifica_deepen_colors();
   FastLED.show();
+}
+
+void FillLEDsFromPaletteColors(){
+    for( int i = 0; i < NUM_LEDS; ++i) {
+        leds[i] = ColorFromPalette( currentPalette, counter8, 255, currentBlending);
+        counter8 += 3;
+    }
+    FastLED.show();
 }
